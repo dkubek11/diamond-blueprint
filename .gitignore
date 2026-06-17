@@ -9,6 +9,7 @@ venv/
 # Database — do not commit raw data
 backend/pitch_sequencing.db
 backend/app/data/
+backend/migrate_to_neon.py
 
 # Node
 frontend/node_modules/
