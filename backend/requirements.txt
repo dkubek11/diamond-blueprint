@@ -4,8 +4,8 @@ uvicorn[standard]==0.29.0
 sqlalchemy==2.0.36
 alembic==1.13.1
 pybaseball==2.2.7
-pandas==3.0.3
-numpy==2.2.3
+pandas==2.2.3
+numpy==1.26.4
 requests==2.32.2
 python-dotenv==1.0.1
 apscheduler==3.10.4
