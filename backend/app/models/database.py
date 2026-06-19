@@ -4,7 +4,12 @@ import os
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./pitch_sequencing.db")
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {})
+# pg8000 is the pure-Python Postgres driver used on Render; rewrite the URL scheme if needed
+_db_url = DATABASE_URL
+if _db_url.startswith("postgresql://") or _db_url.startswith("postgres://"):
+    _db_url = _db_url.replace("postgresql://", "postgresql+pg8000://", 1).replace("postgres://", "postgresql+pg8000://", 1)
+
+engine = create_engine(_db_url, connect_args={"check_same_thread": False} if "sqlite" in _db_url else {})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
