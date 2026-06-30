@@ -1,11 +1,12 @@
 """
 Hitter profile service.
-Computes recent splits (last 7/30 days), hot/cold zones (last 15 days),
-and pitch vulnerability from raw pitch data.
+Recent splits (last 7/30 days) come from the MLB Stats API for accuracy.
+Hot/cold zones and pitch vulnerability come from local Statcast pitch data.
 """
 from datetime import date, timedelta
 from typing import Optional
 
+import httpx
 import pandas as pd
 from sqlalchemy.orm import Session
 
@@ -224,6 +225,69 @@ def _compute_pitch_locations(df: pd.DataFrame) -> list[dict]:
     ]
 
 
+def _fetch_mlb_splits(batter_id: int) -> tuple[dict, dict]:
+    """
+    Fetch last-7-game and last-30-game hitting splits from the MLB Stats API.
+    Returns (last_7_splits, last_30_splits) — each a dict matching _compute_splits output.
+    Falls back to empty dicts on any error.
+    """
+    season = date.today().year
+    base = "https://statsapi.mlb.com/api/v1"
+
+    def _parse(stats: list, game_limit: int) -> dict:
+        for s in stats:
+            if s.get("type", {}).get("displayName") == "lastXGames" and s.get("splits"):
+                sp = s["splits"][0]["stat"]
+                pa = sp.get("plateAppearances", 0)
+                ab = sp.get("atBats", 0)
+                hits = sp.get("hits", 0)
+                ks = sp.get("strikeOuts", 0)
+                bbs = sp.get("baseOnBalls", 0) + sp.get("intentionalWalks", 0) + sp.get("hitByPitch", 0)
+                return {
+                    "pa": pa,
+                    "avg": round(hits / ab, 3) if ab > 0 else None,
+                    "k_pct": round(ks / pa, 3) if pa > 0 else None,
+                    "bb_pct": round(bbs / pa, 3) if pa > 0 else None,
+                    "whiff_pct": None,  # not in MLB Stats API counting stats
+                    "xwoba": None,      # not in MLB Stats API counting stats
+                }
+        return {}
+
+    try:
+        with httpx.Client(timeout=8) as client:
+            r7 = client.get(
+                f"{base}/people/{batter_id}/stats",
+                params={"stats": "lastXGames", "group": "hitting", "season": season, "limit": 7},
+            )
+            r30 = client.get(
+                f"{base}/people/{batter_id}/stats",
+                params={"stats": "lastXGames", "group": "hitting", "season": season, "limit": 30},
+            )
+        s7  = _parse(r7.json().get("stats", []), 7)
+        s30 = _parse(r30.json().get("stats", []), 30)
+        return s7, s30
+    except Exception:
+        return {}, {}
+
+
+def _fetch_statcast_whiff_xwoba(df_7: pd.DataFrame, df_30: pd.DataFrame) -> tuple[dict, dict]:
+    """Compute whiff% and xwOBA from Statcast pitch data to supplement MLB API splits."""
+    def _wx(df):
+        if df.empty:
+            return {}
+        df = df.copy()
+        df["is_whiff"] = df["description"].isin(WHIFF_DESCS)
+        df["is_swing"] = df["description"].isin(WHIFF_DESCS | {"hit_into_play", "foul", "foul_tip"})
+        swings = df["is_swing"].sum()
+        whiffs = df["is_whiff"].sum()
+        xwoba_vals = df["estimated_woba_using_speedangle"].dropna()
+        return {
+            "whiff_pct": round(whiffs / swings, 3) if swings > 0 else None,
+            "xwoba": round(xwoba_vals.mean(), 3) if len(xwoba_vals) > 0 else None,
+        }
+    return _wx(df_7), _wx(df_30)
+
+
 def get_hitter_profile(db: Session, batter_id: int) -> dict:
     today = date.today()
     df_30 = _load_batter_pitches(db, batter_id, today - timedelta(days=30))
@@ -232,9 +296,18 @@ def get_hitter_profile(db: Session, batter_id: int) -> dict:
     last_20_dates = _last_n_game_dates(db, batter_id, 20)
     df_20g = _load_batter_pitches_by_dates(db, batter_id, last_20_dates)
 
+    # Official splits from MLB Stats API
+    mlb_7, mlb_30 = _fetch_mlb_splits(batter_id)
+
+    # Whiff% and xwOBA still come from Statcast (not in MLB counting stats)
+    wx_7, wx_30 = _fetch_statcast_whiff_xwoba(df_7, df_30)
+
+    splits_7  = {**mlb_7,  **wx_7}  if mlb_7  else _compute_splits(df_7)
+    splits_30 = {**mlb_30, **wx_30} if mlb_30 else _compute_splits(df_30)
+
     return {
-        "last_7":  _compute_splits(df_7),
-        "last_30": _compute_splits(df_30),
+        "last_7":  splits_7,
+        "last_30": splits_30,
         "hot_cold_zones": _compute_hot_cold_zones(df_20g),
         "pitch_locations": _compute_pitch_locations(df_20g),
         "pitch_vulnerability": _compute_pitch_vulnerability(df_20g),

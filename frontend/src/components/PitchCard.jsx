@@ -31,7 +31,14 @@ const COMPONENT_META = {
   contact_quality: { label: 'Contact Quality', formula: '(0.500 − xwOBA) × weight', desc: 'Inverted xwOBA on contact. Lower xwOBA (weak contact) = higher contribution to score.' },
 }
 
-export default function PitchCard({ rec, rank, selected, onClick }) {
+const GOAL_BADGE = {
+  strikeout:   { label: '🔥 Best for K',           color: '#7c3aed' },
+  groundball:  { label: '⬇️ Best for Ground Ball',  color: '#0369a1' },
+  weakcontact: { label: '🪶 Best for Weak Contact', color: '#047857' },
+  chase:       { label: '🪤 Best to Expand Zone',   color: '#b45309' },
+}
+
+export default function PitchCard({ rec, rank, selected, onClick, situationGoal, situationBest, vulnerability }) {
   const [showBreakdown, setShowBreakdown] = useState(false)
   const isTop = rank === 0
 
@@ -68,7 +75,14 @@ export default function PitchCard({ rec, rank, selected, onClick }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontWeight: 700, fontSize: 15 }}>{rec.pitch_label}</span>
             <span style={{ color: 'var(--text-muted)', fontSize: 12, fontFamily: 'monospace' }}>{rec.pitch_type}</span>
-            {isTop && <span className="tag tag-green">Top Pick</span>}
+            {isTop && !situationGoal && <span className="tag tag-green">Top Pick</span>}
+            {situationBest && situationGoal && (
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 5,
+                background: GOAL_BADGE[situationGoal]?.color,
+                color: '#fff',
+              }}>{GOAL_BADGE[situationGoal]?.label}</span>
+            )}
           </div>
           <ScoreBar score={finalScore} />
         </div>
@@ -76,9 +90,16 @@ export default function PitchCard({ rec, rank, selected, onClick }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
           <Stat label="Run Value" value={rec.avg_run_value != null ? rec.avg_run_value.toFixed(3) : '—'} good={rec.avg_run_value != null && rec.avg_run_value < 0} />
           <Stat label="Whiff %"   value={rec.whiff_rate   != null ? pct(rec.whiff_rate)            : '—'} good={rec.whiff_rate > 0.25} />
-          <Stat label="Chase %"   value={rec.chase_rate   != null ? pct(rec.chase_rate)            : '—'} good={rec.chase_rate > 0.30} />
+          <Stat label="Chase %"   value={rec.best_zone?.zone === 5 ? 'N/A' : (rec.chase_rate != null ? pct(rec.chase_rate) : '—')} good={rec.chase_rate > 0.30} />
           <Stat label="xwOBA"     value={rec.avg_xwoba    != null ? rec.avg_xwoba.toFixed(3)       : '—'} good={rec.avg_xwoba != null && rec.avg_xwoba < 0.300} />
         </div>
+        {(situationGoal === 'groundball' || situationGoal === 'weakcontact') && vulnerability && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+            <Stat label="GB %" value={vulnerability.gb_pct != null ? pct(vulnerability.gb_pct) : '—'} good={vulnerability.gb_pct > 0.45} highlight={situationGoal === 'groundball'} />
+            <Stat label="Hard Hit %" value={vulnerability.hard_hit_pct != null ? pct(vulnerability.hard_hit_pct) : '—'} good={vulnerability.hard_hit_pct != null && vulnerability.hard_hit_pct < 0.35} />
+            <Stat label="Avg EV" value={vulnerability.avg_ev != null ? `${vulnerability.avg_ev} mph` : '—'} good={vulnerability.avg_ev != null && vulnerability.avg_ev < 88} />
+          </div>
+        )}
 
         {(pfxX != null || pfxZ != null) && (
           <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
@@ -282,10 +303,10 @@ function MoveStat({ label, value, title }) {
   )
 }
 
-function Stat({ label, value, good }) {
+function Stat({ label, value, good, highlight }) {
   return (
-    <div style={{ background: 'var(--bg)', borderRadius: 6, padding: '6px 8px' }}>
-      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</div>
+    <div style={{ background: highlight ? 'rgba(3,105,161,0.15)' : 'var(--bg)', borderRadius: 6, padding: '6px 8px', border: highlight ? '1px solid #0369a1' : 'none' }}>
+      <div style={{ fontSize: 10, color: highlight ? '#38bdf8' : 'var(--text-muted)', marginBottom: 2, textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</div>
       <div style={{ fontWeight: 700, fontSize: 14, color: good ? 'var(--green)' : 'var(--text)', fontFamily: 'JetBrains Mono, monospace' }}>{value}</div>
     </div>
   )

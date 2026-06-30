@@ -118,19 +118,19 @@ ZONE_LABELS = {
 # 0-0:                              first pitch — run value and called strike set the tone.
 
 COUNT_WEIGHTS: dict[tuple[int, int], tuple[float, float, float, float, float]] = {
-    #              rv     whiff   csw    chase   contact
-    (0, 0): (0.35, 0.25,  0.20,  0.10,  0.10),   # first pitch
-    (0, 1): (0.35, 0.30,  0.20,  0.05,  0.10),   # early ahead
-    (1, 0): (0.35, 0.30,  0.20,  0.05,  0.10),   # early behind
-    (1, 1): (0.35, 0.30,  0.15,  0.10,  0.10),   # even
-    (2, 0): (0.50, 0.20,  0.15,  0.05,  0.10),   # hitter's count
-    (2, 1): (0.35, 0.30,  0.15,  0.10,  0.10),   # even
-    (3, 0): (0.55, 0.15,  0.20,  0.00,  0.10),   # must throw strike — chase irrelevant
-    (3, 1): (0.50, 0.20,  0.15,  0.05,  0.10),   # hitter's count
-    (0, 2): (0.20, 0.45,  0.10,  0.15,  0.10),   # pitcher's count
-    (1, 2): (0.20, 0.45,  0.10,  0.15,  0.10),   # pitcher's count
-    (2, 2): (0.25, 0.40,  0.10,  0.15,  0.10),   # two-strike, room to expand
-    (3, 2): (0.20, 0.40,  0.05,  0.25,  0.10),   # full count — binary, chase is key
+    #              rv      whiff   csw     chase   contact
+    (0, 0): (0.40,  0.20,  0.15,  0.05,  0.20),   # first pitch
+    (0, 1): (0.35,  0.275, 0.175, 0.10,  0.10),   # early ahead
+    (1, 0): (0.35,  0.275, 0.175, 0.05,  0.15),   # early behind
+    (1, 1): (0.35,  0.275, 0.175, 0.10,  0.10),   # even
+    (2, 0): (0.42,  0.18,  0.15,  0.05,  0.20),   # hitter's count
+    (2, 1): (0.375, 0.25,  0.125, 0.10,  0.15),   # even, slight hitter lean
+    (3, 0): (0.50,  0.10,  0.20,  0.00,  0.20),   # must throw strike — chase irrelevant
+    (3, 1): (0.45,  0.15,  0.15,  0.025, 0.225),  # hitter's count
+    (0, 2): (0.20,  0.40,  0.05,  0.25,  0.10),   # pitcher's count
+    (1, 2): (0.225, 0.40,  0.05,  0.225, 0.10),   # pitcher's count
+    (2, 2): (0.30,  0.30,  0.10,  0.20,  0.10),   # two-strike
+    (3, 2): (0.35,  0.25,  0.15,  0.10,  0.15),   # full count
 }
 
 COUNT_CATEGORY: dict[tuple[int, int], str] = {

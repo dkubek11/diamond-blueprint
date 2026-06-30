@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getTodayGames, simulate, getPlayer, getH2H } from '../api'
+import { getTodayGames, simulate, getPlayer, getH2H, getHitterProfile } from '../api'
 import H2HPanel from '../components/H2HPanel'
 import { getTeamColors, getLogoUrl } from '../teamConfig'
 import PitchCard from '../components/PitchCard'
@@ -195,8 +195,10 @@ function SimulatorCore({ pitcherId, batterId, batterName }) {
   const [logZone, setLogZone]   = useState(null)
   const [logResult, setLogResult] = useState(null)
   const [abEnded, setAbEnded] = useState(false)
-  const [h2h, setH2h]           = useState(null)
-  const [showH2H, setShowH2H]   = useState(false)
+  const [h2h, setH2h]                 = useState(null)
+  const [showH2H, setShowH2H]         = useState(false)
+  const [situationGoal, setSituationGoal] = useState(null)
+  const [vulnerability, setVulnerability] = useState({})
 
   useEffect(() => {
     getPlayer(pitcherId).then(setPitcher).catch(() => {})
@@ -205,6 +207,11 @@ function SimulatorCore({ pitcherId, batterId, batterName }) {
       if (p?.bats) setStand(p.bats === 'L' ? 'L' : 'R')
     }).catch(() => {})
     getH2H(pitcherId, batterId).then(setH2h).catch(() => {})
+    getHitterProfile(batterId).then(profile => {
+      const vuln = {}
+      for (const v of (profile?.pitch_vulnerability || [])) vuln[v.pitch_type] = v
+      setVulnerability(vuln)
+    }).catch(() => {})
     setH2h(null); setShowH2H(false)
     setBalls(0); setStrikes(0); setPrevPitch(null); setAtBatHistory([]); setAbEnded(false)
   }, [pitcherId, batterId])
@@ -241,7 +248,11 @@ function SimulatorCore({ pitcherId, batterId, batterName }) {
     setLogPitch(null); setLogZone(null); setLogResult(null); setLogMode(false)
   }
 
-  const activeRec = recs[selected] || null
+  const adjustedRecs = situationGoal
+    ? [...recs].sort((a, b) => goalScore(b, situationGoal, vulnerability) - goalScore(a, situationGoal, vulnerability))
+    : recs
+
+  const activeRec = adjustedRecs[selected] || null
 
   return (
     <div>
@@ -308,6 +319,26 @@ function SimulatorCore({ pitcherId, batterId, batterName }) {
 
         {/* Center: recs + log panel */}
         <div>
+          {/* Situation goal selector */}
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 16px', marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 8 }}>Situation Goal</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+              {SITUATION_GOALS.map(g => (
+                <button key={g.key} onClick={() => setSituationGoal(situationGoal === g.key ? null : g.key)} style={{
+                  padding: '5px 13px', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  background: situationGoal === g.key ? g.color : 'var(--surface2)',
+                  border: `1px solid ${situationGoal === g.key ? g.color : 'var(--border)'}`,
+                  color: situationGoal === g.key ? '#fff' : 'var(--text)',
+                }}>{g.label}</button>
+              ))}
+            </div>
+            {situationGoal && (
+              <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                {SITUATION_GOALS.find(g => g.key === situationGoal)?.description}
+              </div>
+            )}
+          </div>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
             <h2 style={{ fontSize: 16, fontWeight: 700 }}>
               Recommendations <span style={{ fontFamily: 'monospace', color: 'var(--accent2)' }}>{balls}-{strikes}</span>
@@ -372,8 +403,14 @@ function SimulatorCore({ pitcherId, batterId, batterName }) {
             </div>
           )}
 
-          {recs.map((rec, i) => (
-            <PitchCard key={rec.pitch_type} rec={rec} rank={i} selected={selected === i} onClick={() => setSelected(i)} />
+          {adjustedRecs.map((rec, i) => (
+            <PitchCard
+              key={rec.pitch_type} rec={rec} rank={i}
+              selected={selected === i} onClick={() => setSelected(i)}
+              situationGoal={situationGoal}
+              situationBest={i === 0 && situationGoal != null}
+              vulnerability={vulnerability[rec.pitch_type]}
+            />
           ))}
         </div>
 
@@ -562,3 +599,25 @@ function Spinner() {
 const th = { padding:'4px 6px', textAlign:'left', fontWeight:600, fontSize:10, textTransform:'uppercase', letterSpacing:'.04em' }
 const td = { padding:'6px 6px' }
 const pct = v => `${(v*100).toFixed(1)}%`
+
+const SITUATION_GOALS = [
+  { key: 'strikeout',   label: '🔥 Need a K',          color: '#7c3aed', description: 'Re-ranks by whiff rate + chase rate. Best pitch to hunt a strikeout.' },
+  { key: 'groundball',  label: '⬇️ Need a Ground Ball', color: '#0369a1', description: 'Re-ranks by ground ball rate. Best pitch to induce a double play.' },
+  { key: 'weakcontact', label: '🪶 Need Weak Contact',  color: '#047857', description: 'Re-ranks by xwOBA suppression. Best pitch to get a weak fly ball or soft out.' },
+  { key: 'chase',       label: '🪤 Expand the Zone',    color: '#b45309', description: 'Re-ranks by chase rate. Best pitch to get the batter to chase out of the zone.' },
+]
+
+function goalScore(rec, goal, vulnerability) {
+  const whiff  = rec.whiff_rate  ?? 0
+  const chase  = rec.chase_rate  ?? 0
+  const xwoba  = rec.avg_xwoba   ?? 0.320
+  const vuln   = vulnerability?.[rec.pitch_type]
+  const gbPct  = vuln?.gb_pct    ?? 0
+  switch (goal) {
+    case 'strikeout':   return whiff * 0.65 + chase * 0.35
+    case 'groundball':  return gbPct * 0.80 + (0.500 - xwoba) * 0.20
+    case 'weakcontact': return (0.500 - xwoba) * 0.70 + gbPct * 0.30
+    case 'chase':       return chase * 0.80 + whiff * 0.20
+    default:            return rec.score
+  }
+}
