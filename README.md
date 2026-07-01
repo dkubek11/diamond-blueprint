@@ -1,6 +1,6 @@
 # Diamond Blueprint
 
-A full-stack baseball scouting application that tells pitchers what to throw next — and why.
+A full-stack baseball scouting application that tells pitchers what to throw next and why.
 
 ---
 
