@@ -4,23 +4,13 @@ A full-stack baseball scouting application that tells pitchers what to throw nex
 
 ---
 
-As an aspiring sports data analyst, I wanted to understand what actually goes into pitch sequencing at the MLB level — not just what pitch was thrown, but why, and whether the data could tell you what should come next.
+As an aspiring sports data analyst, I wanted to understand what actually goes into pitch sequencing at the MLB level. Not just what pitch was thrown, but why, and whether the data could tell you what should come next. I think when it comes to pitching it should be a healthy balance of looking at the numbers while also going by the flow of an at bat based on what a pitcher might be feeling.
 
-Diamond Blueprint pulls every pitch thrown in the 2026 MLB season from Statcast and runs it through a custom scoring engine that ranks pitch recommendations by count leverage, batter tendencies, head-to-head history, pitch tunneling, previous pitch result, and movement profile. The system is sequencing-aware — it specifically looks at what pitches have been thrown in similar situations to inform what comes next.
+Over the past several weeks I built a full-stack baseball scouting application powered by Statcast pitch-by-pitch data. It pulls every pitch thrown in the 2026 season and can be used for custom matchups or to look at each day's games and lineups. I created a custom scoring engine that ranks pitch recommendations using run value, whiff rate, chase rate, called strike rate, and xwOBA on contact, each weighted differently depending on the count. On top of the base score I added three modifiers that I felt were important: a head-to-head modifier based on how the pitcher has historically performed against that specific batter, a sequencing modifier that accounts for what happened on the previous pitch (if the batter just missed a slider, pitches that tunnel off it get a boost, if they barreled a fastball it gets penalized), and a movement modifier that determines if a pitch has a specific advantage based on the pitcher's IVB, HB, and spin rate versus that particular batter.
 
-On top of the core recommendations, a **Situation Goal** feature re-ranks pitches based on what the pitcher needs most: a strikeout, a ground ball for a double play, or weak contact. The hitter profile pulls official splits from the MLB Stats API and supplements them with Statcast-derived whiff rate and xwOBA.
+On top of the core recommendations I added a situation goal feature that re-ranks pitches based on the game situation, whether you need a strikeout, a ground ball for a double play, or weak contact. The site also has hot and cold zones based on the past 20 games along with a pitch vulnerability breakdown showing what hitters are doing to each pitch in a pitcher's arsenal. It can also be used in game by logging pitches in real time. Built with a Python and FastAPI backend powered by real MLB Statcast data, stored and queried through a PostgreSQL database.
 
 ---
-
-## What It Does
-
-- **Pitch recommendations** ranked by a composite score built from run value, whiff rate, chase rate, called strike rate, and xwOBA on contact — each weighted differently depending on the count
-- **Three score modifiers**: head-to-head history against this specific batter, sequencing logic based on the previous pitch and result, and a movement modifier based on the pitcher's break profile
-- **Situation Goal** — re-ranks pitches on the fly for Need a K, Need a Ground Ball, or Need Weak Contact
-- **Hitter profile** with official MLB splits, hot/cold zone grid, and pitch vulnerability breakdown by pitch type
-- **Today's games dashboard** with projected lineups and one-click access to the simulator for any matchup
-- **Head-to-head history** pulled live from Baseball Savant (2015–present)
-- **3-pitch sequence chain** projection for at-bat planning
 
 ## Built With
 
