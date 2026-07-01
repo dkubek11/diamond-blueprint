@@ -35,7 +35,6 @@ const GOAL_BADGE = {
   strikeout:   { label: '🔥 Best for K',           color: '#7c3aed' },
   groundball:  { label: '⬇️ Best for Ground Ball',  color: '#0369a1' },
   weakcontact: { label: '🪶 Best for Weak Contact', color: '#047857' },
-  chase:       { label: '🪤 Best to Expand Zone',   color: '#b45309' },
 }
 
 export default function PitchCard({ rec, rank, selected, onClick, situationGoal, situationBest, vulnerability }) {

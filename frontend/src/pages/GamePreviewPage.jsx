@@ -604,7 +604,6 @@ const SITUATION_GOALS = [
   { key: 'strikeout',   label: '🔥 Need a K',          color: '#7c3aed', description: 'Re-ranks by whiff rate + chase rate. Best pitch to hunt a strikeout.' },
   { key: 'groundball',  label: '⬇️ Need a Ground Ball', color: '#0369a1', description: 'Re-ranks by ground ball rate. Best pitch to induce a double play.' },
   { key: 'weakcontact', label: '🪶 Need Weak Contact',  color: '#047857', description: 'Re-ranks by xwOBA suppression. Best pitch to get a weak fly ball or soft out.' },
-  { key: 'chase',       label: '🪤 Expand the Zone',    color: '#b45309', description: 'Re-ranks by chase rate. Best pitch to get the batter to chase out of the zone.' },
 ]
 
 function goalScore(rec, goal, vulnerability) {
@@ -617,7 +616,6 @@ function goalScore(rec, goal, vulnerability) {
     case 'strikeout':   return whiff * 0.65 + chase * 0.35
     case 'groundball':  return gbPct * 0.80 + (0.500 - xwoba) * 0.20
     case 'weakcontact': return (0.500 - xwoba) * 0.70 + gbPct * 0.30
-    case 'chase':       return chase * 0.80 + whiff * 0.20
     default:            return rec.score
   }
 }
