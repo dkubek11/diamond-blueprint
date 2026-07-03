@@ -1,0 +1,49 @@
+name: Daily Health Check
+
+on:
+  schedule:
+    - cron: '0 13 * * *'  # 9 AM ET every day
+  workflow_dispatch:       # allow manual trigger
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check backend health
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://diamond-blueprint-api-production.up.railway.app/health)
+          if [ "$STATUS" != "200" ]; then
+            echo "HEALTH_FAIL=true" >> $GITHUB_ENV
+            echo "Health endpoint returned $STATUS"
+          else
+            echo "Health check passed"
+          fi
+
+      - name: Check games endpoint
+        run: |
+          RESPONSE=$(curl -s https://diamond-blueprint-api-production.up.railway.app/api/games/today)
+          if echo "$RESPONSE" | grep -q '"games"'; then
+            echo "Games endpoint OK"
+          else
+            echo "GAMES_FAIL=true" >> $GITHUB_ENV
+            echo "Games endpoint unexpected response: $RESPONSE"
+          fi
+
+      - name: Send failure email
+        if: env.HEALTH_FAIL == 'true' || env.GAMES_FAIL == 'true'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "Diamond Blueprint — API is down"
+          to: dylankubek@icloud.com
+          from: Diamond Blueprint Monitor
+          body: |
+            One or more checks failed for Diamond Blueprint.
+
+            Health check failed: ${{ env.HEALTH_FAIL == 'true' && 'YES' || 'no' }}
+            Games endpoint failed: ${{ env.GAMES_FAIL == 'true' && 'YES' || 'no' }}
+
+            Check Railway logs: https://railway.app
