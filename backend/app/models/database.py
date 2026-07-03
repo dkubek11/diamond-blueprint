@@ -6,10 +6,17 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./pitch_sequencing.db")
 
 # pg8000 is the pure-Python Postgres driver used on Render; rewrite the URL scheme if needed
 _db_url = DATABASE_URL
+_connect_args = {}
 if _db_url.startswith("postgresql://") or _db_url.startswith("postgres://"):
+    # Strip sslmode from URL — pg8000 doesn't accept it as a query param
     _db_url = _db_url.replace("postgresql://", "postgresql+pg8000://", 1).replace("postgres://", "postgresql+pg8000://", 1)
+    if "sslmode=require" in _db_url:
+        _db_url = _db_url.replace("?sslmode=require", "").replace("&sslmode=require", "")
+        _connect_args = {"ssl_context": True}
+elif "sqlite" in _db_url:
+    _connect_args = {"check_same_thread": False}
 
-engine = create_engine(_db_url, connect_args={"check_same_thread": False} if "sqlite" in _db_url else {})
+engine = create_engine(_db_url, connect_args=_connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
