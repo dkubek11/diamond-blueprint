@@ -1,0 +1,28 @@
+name: Nightly Data Update
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # 3 AM ET (UTC-5) every day
+  workflow_dispatch:       # allow manual trigger from GitHub
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements-local.txt
+
+      - name: Run nightly update
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python update_neon.py
