@@ -1,0 +1,6 @@
+# Local-only dependencies (data ingestion)
+# Do NOT install these on the server — pybaseball requires a C compiler
+-r requirements.txt
+pybaseball==2.2.7
+alembic==1.13.1
+apscheduler==3.10.4
