@@ -25,4 +25,5 @@ jobs:
       - name: Run nightly update
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: python update_neon.py
