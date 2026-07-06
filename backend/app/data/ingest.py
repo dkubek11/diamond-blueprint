@@ -91,6 +91,9 @@ def ingest_date_range(start: date, end: date, db: Session | None = None):
             return
 
         rows = _to_pitch_rows(raw)
+        # Strip id so Postgres auto-generates primary keys
+        for row in rows:
+            row.pop("id", None)
         logger.info(f"Inserting {len(rows)} pitches")
 
         # Batch insert — skip duplicates via existing date range delete then re-insert
