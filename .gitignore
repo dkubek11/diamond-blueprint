@@ -8,7 +8,8 @@ venv/
 
 # Database — do not commit raw data
 backend/pitch_sequencing.db
-backend/app/data/
+backend/app/data/*.csv
+backend/app/data/*.parquet
 backend/migrate_to_neon.py
 
 # Node
