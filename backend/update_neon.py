@@ -3,8 +3,12 @@ Nightly data update script — runs in GitHub Actions against Neon Postgres.
 Fetches Statcast data from the last stored date through today, then re-aggregates.
 """
 import sys
+import os
 import logging
 from datetime import date, timedelta, datetime
+
+# Ensure the backend directory is on the path so app.* imports work
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
