@@ -5,16 +5,20 @@ Fetches Statcast data from the last stored date through today, then re-aggregate
 import sys
 import os
 import logging
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta
 
 # Ensure the backend directory is on the path so app.* imports work
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-from app.models.database import SessionLocal
-from app.models.database import Pitch
+from sqlalchemy import text
+from app.models.database import SessionLocal, engine, Base, Pitch
 
+# Create tables if they don't exist
+Base.metadata.create_all(bind=engine)
+
+# Check last date in DB
 db = SessionLocal()
 try:
     from sqlalchemy import func
@@ -23,8 +27,12 @@ finally:
     db.close()
 
 if not last:
-    # No data at all — seed from start of 2026 season
+    # No data — seed from start of 2026 season and clear any partial data
     start = date(2026, 4, 1)
+    print("No existing data, clearing tables and seeding from April 1 2026...")
+    with engine.connect() as conn:
+        conn.execute(text("TRUNCATE TABLE pitch_aggregates, pitches RESTART IDENTITY CASCADE"))
+        conn.commit()
 else:
     start = last + timedelta(days=1)
 
