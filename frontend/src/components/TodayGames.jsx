@@ -5,8 +5,9 @@ import { getTeamColors, getLogoUrl } from '../teamConfig'
 
 // Show tomorrow's games after 10 PM ET
 function isAfter10pmET() {
-  const now = new Date()
-  const etHour = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })).getHours()
+  const etHour = parseInt(
+    new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hour12: false }).format(new Date())
+  )
   return etHour >= 22
 }
 
