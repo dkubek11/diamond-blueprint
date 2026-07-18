@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { getTodayGames, getTomorrowGames } from '../api'
 import { getTeamColors, getLogoUrl } from '../teamConfig'
 
-// Show tomorrow's games after 6 PM ET
-function isAfter6pmET() {
+// Show tomorrow's games after 10 PM ET
+function isAfter10pmET() {
   const now = new Date()
   const etHour = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })).getHours()
-  return etHour >= 18
+  return etHour >= 22
 }
 
 export default function TodayGames() {
@@ -15,7 +15,7 @@ export default function TodayGames() {
   const [tomorrowData, setTomorrowData] = useState(null)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
-  const showTomorrow = isAfter6pmET()
+  const showTomorrow = isAfter10pmET()
 
   useEffect(() => {
     const fetches = [getTodayGames().catch(() => null)]
