@@ -16,7 +16,7 @@ export default function TodayGames() {
   const [tomorrowData, setTomorrowData] = useState(null)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
-  const showTomorrow = false // isAfter10pmET()
+  const showTomorrow = isAfter10pmET()
 
   useEffect(() => {
     const fetches = [getTodayGames().catch(() => null)]

@@ -1,5 +1,14 @@
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
 from typing import Optional
+
+def _today_et() -> str:
+    """Return today's date in Eastern Time as YYYY-MM-DD string."""
+    et = timezone(timedelta(hours=-4))  # EDT (UTC-4)
+    return datetime.now(et).strftime("%Y-%m-%d")
+
+def _tomorrow_et() -> str:
+    et = timezone(timedelta(hours=-4))
+    return (datetime.now(et) + timedelta(days=1)).strftime("%Y-%m-%d")
 
 import math
 import httpx
@@ -450,7 +459,7 @@ def _fetch_projected_lineup(team_id: int) -> list[dict]:
 
 @router.get("/games/today")
 def games_today():
-    today = date.today().strftime("%Y-%m-%d")
+    today = _today_et()
     url = (
         f"https://statsapi.mlb.com/api/v1/schedule"
         f"?sportId=1&date={today}"
@@ -514,8 +523,7 @@ def games_today():
 
 @router.get("/games/tomorrow")
 def games_tomorrow():
-    from datetime import timedelta
-    tomorrow = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+    tomorrow = _tomorrow_et()
     url = (
         f"https://statsapi.mlb.com/api/v1/schedule"
         f"?sportId=1&date={tomorrow}"
