@@ -1,6 +1,7 @@
 """
 Nightly data update script — runs in GitHub Actions against Neon Postgres.
-Clears existing pitch data and re-fetches the full 2026 season, then aggregates.
+On first run: seeds from April 1 2026.
+On subsequent runs: fetches only new days since last stored date.
 """
 import sys
 import os
@@ -11,23 +12,34 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-from sqlalchemy import text
-from app.models.database import engine, Base
+from sqlalchemy import text, func
+from app.models.database import engine, Base, SessionLocal, Pitch
 
 # Create tables if they don't exist
 Base.metadata.create_all(bind=engine)
 
-# Always wipe and re-fetch — avoids sequence/duplicate key issues
-print("Clearing existing data...")
-with engine.connect() as conn:
-    conn.execute(text("TRUNCATE TABLE pitch_aggregates, pitches RESTART IDENTITY CASCADE"))
-    conn.commit()
+# Find last stored date
+db = SessionLocal()
+try:
+    last = db.query(func.max(Pitch.game_date)).scalar()
+finally:
+    db.close()
 
-start = date(2026, 4, 1)
+if not last:
+    # First time — clear any partial data and seed from start of season
+    print("No existing data found. Seeding from April 1 2026...")
+    with engine.connect() as conn:
+        conn.execute(text("TRUNCATE TABLE pitch_aggregates, pitches RESTART IDENTITY CASCADE"))
+        conn.commit()
+    start = date(2026, 4, 1)
+else:
+    # Incremental — only fetch new days
+    start = last + timedelta(days=1)
+
 end = date.today() - timedelta(days=1)  # yesterday (today's games not final yet)
 
 if start > end:
-    print("No data to fetch yet.")
+    print(f"Already up to date through {end}")
     sys.exit(0)
 
 print(f"Fetching {start} to {end}...")
