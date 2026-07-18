@@ -23,6 +23,7 @@ export const getMatchup = (pid, bid, stand = 'R') => get(`/matchup/${pid}/${bid}
 export const simulate = (body) => post('/simulate', body)
 export const getHitterProfile = (id) => get(`/hitter/${id}/profile`)
 export const getTodayGames = () => get('/games/today')
+export const getTomorrowGames = () => get('/games/tomorrow')
 export const getH2H = (pitcherId, batterId) => get(`/h2h/${pitcherId}/${batterId}`)
 export const getSequenceChain = (pitcherId, batterId, balls, strikes, stand, currentPitch) =>
   get(`/sequence-chain/${pitcherId}/${batterId}?balls=${balls}&strikes=${strikes}&stand=${stand}${currentPitch ? `&current_pitch=${currentPitch}` : ''}`)

@@ -1,35 +1,68 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getTodayGames } from '../api'
+import { getTodayGames, getTomorrowGames } from '../api'
 import { getTeamColors, getLogoUrl } from '../teamConfig'
 
+// Show tomorrow's games after 6 PM ET
+function isAfter6pmET() {
+  const now = new Date()
+  const etHour = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' })).getHours()
+  return etHour >= 18
+}
+
 export default function TodayGames() {
-  const [data, setData] = useState(null)
+  const [todayData, setTodayData] = useState(null)
+  const [tomorrowData, setTomorrowData] = useState(null)
   const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
+  const showTomorrow = isAfter6pmET()
 
   useEffect(() => {
-    getTodayGames()
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false))
+    const fetches = [getTodayGames().catch(() => null)]
+    if (showTomorrow) fetches.push(getTomorrowGames().catch(() => null))
+    Promise.all(fetches).then(([today, tomorrow]) => {
+      setTodayData(today)
+      setTomorrowData(tomorrow ?? null)
+      setLoading(false)
+    })
   }, [])
 
   if (loading) return <div style={{ color: 'var(--text-muted)', padding: 32 }}>Loading today's games…</div>
-  if (!data || !data.games.length) return (
-    <div style={{ color: 'var(--text-muted)', padding: 32, textAlign: 'center' }}>No games scheduled for today.</div>
-  )
+
+  const todayGames = todayData?.games ?? []
+  const tomorrowGames = tomorrowData?.games ?? []
 
   return (
     <div>
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>
-        {data.games.length} game{data.games.length !== 1 ? 's' : ''} today · Click a pitcher to open the full game preview with lineup navigation
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {data.games.map(game => (
-          <GameCard key={game.game_pk} game={game} navigate={navigate} />
-        ))}
-      </div>
+      {/* Today's games */}
+      {todayGames.length > 0 ? (
+        <>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>
+            {todayGames.length} game{todayGames.length !== 1 ? 's' : ''} today · Click a pitcher to open the full game preview with lineup navigation
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {todayGames.map(game => (
+              <GameCard key={game.game_pk} game={game} navigate={navigate} />
+            ))}
+          </div>
+        </>
+      ) : (
+        <div style={{ color: 'var(--text-muted)', padding: '16px 0', textAlign: 'center' }}>No games scheduled for today.</div>
+      )}
+
+      {/* Tomorrow's games (after 6 PM ET) */}
+      {showTomorrow && tomorrowGames.length > 0 && (
+        <div style={{ marginTop: 36 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+            Tomorrow's Games
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {tomorrowGames.map(game => (
+              <GameCard key={game.game_pk} game={game} navigate={navigate} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

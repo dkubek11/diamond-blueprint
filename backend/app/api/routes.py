@@ -510,3 +510,68 @@ def games_today():
             })
 
     return {"date": today, "games": games}
+
+
+@router.get("/games/tomorrow")
+def games_tomorrow():
+    from datetime import timedelta
+    tomorrow = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
+    url = (
+        f"https://statsapi.mlb.com/api/v1/schedule"
+        f"?sportId=1&date={tomorrow}"
+        f"&hydrate=probablePitcher,lineups,team,linescore"
+    )
+    try:
+        resp = httpx.get(url, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"MLB API error: {e}")
+
+    games = []
+    for date_entry in data.get("dates", []):
+        for game in date_entry.get("games", []):
+            away_team = game.get("teams", {}).get("away", {})
+            home_team = game.get("teams", {}).get("home", {})
+
+            def extract_team(t):
+                team = t.get("team", {})
+                probable = t.get("probablePitcher", {})
+                return {
+                    "team_id": team.get("id"),
+                    "team_name": team.get("name"),
+                    "team_abbr": team.get("abbreviation"),
+                    "probable_pitcher": {
+                        "id": probable.get("id"),
+                        "name": probable.get("fullName"),
+                    } if probable else None,
+                }
+
+            lineups = game.get("lineups", {})
+            away_raw = lineups.get("awayPlayers", [])
+            home_raw = lineups.get("homePlayers", [])
+
+            away_info = extract_team(away_team)
+            home_info = extract_team(home_team)
+
+            away_lineup = (
+                [{"id": p.get("id"), "name": p.get("fullName"), "batting_order": i + 1} for i, p in enumerate(away_raw)]
+                if away_raw else _fetch_projected_lineup(away_info["team_id"])
+            )
+            home_lineup = (
+                [{"id": p.get("id"), "name": p.get("fullName"), "batting_order": i + 1} for i, p in enumerate(home_raw)]
+                if home_raw else _fetch_projected_lineup(home_info["team_id"])
+            )
+
+            status = game.get("status", {}).get("detailedState", "")
+            game_time = game.get("gameDate", "")
+
+            games.append({
+                "game_pk": game.get("gamePk"),
+                "game_time": game_time,
+                "status": status,
+                "away": {**away_info, "lineup": away_lineup, "lineup_confirmed": bool(away_raw)},
+                "home": {**home_info, "lineup": home_lineup, "lineup_confirmed": bool(home_raw)},
+            })
+
+    return {"date": tomorrow, "games": games}
