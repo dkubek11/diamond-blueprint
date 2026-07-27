@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Check backend health
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://diamond-blueprint-api-production.up.railway.app/health)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://diamond-blueprint-api.onrender.com/health)
           if [ "$STATUS" != "200" ]; then
             echo "HEALTH_FAIL=true" >> $GITHUB_ENV
             echo "Health endpoint returned $STATUS"
@@ -21,7 +21,7 @@ jobs:
 
       - name: Check games endpoint
         run: |
-          RESPONSE=$(curl -s https://diamond-blueprint-api-production.up.railway.app/api/games/today)
+          RESPONSE=$(curl -s https://diamond-blueprint-api.onrender.com/api/games/today)
           if echo "$RESPONSE" | grep -q '"games"'; then
             echo "Games endpoint OK"
           else
